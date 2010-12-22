@@ -1,76 +1,9 @@
---[===[
+--[[
     === About ===
+    Raid debuff mod for oUF
 
-    The missing plugin for healers who use oUF.
-
-    The work is hereby placed in the Public Domain.
-
-    === Usage ===
-
-    --[[ you need the debuff data ]]
-    -- the table structure is pretty simple
-    -- and you probably want to use spellId
-    -- put this outside the style func
-    local raid_debuffs = {
-        [GetSpellInfo(xxx)] = 10,
-        [GetSpellInfo(zzz)] = 11,
-        ...
-    }
-    -- we can generate them
-    local raid_debuffs = {}
-    for k, v in ipairs{
-        -- spellIDs
-        xxxxx,
-        yyyyy,
-    } do
-        local spell = GetSpellInfo(v)
-        if(spell) then
-            raid_debuffs = k+10
-        end
-    end
-
-    --[[ create the icon button in style func ]]
-    self.RaidDebuffs = CreateFrame('Frame', nil, self)
-    self.RaidDebuffs:SetHeight(20)
-    self.RaidDebuffs:SetWidth(20)
-    self.RaidDebuffs:SetPoint('CENTER', self)
-    self.RaidDebuffs:SetFrameStrata'HIGH'
-
-    -- debuff type color
-    self.RaidDebuffs:SetBackdrop({
-        bgFile = [=[Interface\ChatFrame\ChatFrameBackground]=],
-        insets = {top = -1, left = -1, bottom = -1, right = -1},
-    })
-
-    self.RaidDebuffs.icon = self.RaidDebuffs:CreateTexture(nil, 'OVERLAY')
-    self.RaidDebuffs.icon:SetTexCoord(.1,.9,.1,.9)
-    self.RaidDebuffs.icon:SetAllPoints(self.RaidDebuffs)
-
-    self.RaidDebuffs.cd = CreateFrame('Cooldown', nil, self.RaidDebuffs)
-    self.RaidDebuffs.cd:SetAllPoints(self.RaidDebuffs)
-
-    --[[ simple timer, if you don't use omnicc
-    self.RaidDebuffs.time = self.RaidDebuffs:CreateFontString(nil, 'OVERLAY')
-    self.RaidDebuffs.time:SetFont(STANDARD_TEXT_FONT, 12, 'OUTLINE')
-    self.RaidDebuffs.time:SetPoint('CENTER', self.RaidDebuffs, 'CENTER', 0, 0)
-    self.RaidDebuffs.time:SetTextColor(1, .9, 0)
-    ]]
-
-    self.RaidDebuffs.count = self.RaidDebuffs:CreateFontString(nil, 'OVERLAY')
-    self.RaidDebuffs.count:SetFont(STANDARD_TEXT_FONT, 8, 'OUTLINE')
-    self.RaidDebuffs.count:SetPoint('BOTTOMRIGHT', self.RaidDebuffs, 'BOTTOMRIGHT', 2, 0)
-    self.RaidDebuffs.count:SetTextColor(1, .9, 0)
-
-    -- [[ options ]]
-    self.RaidDebuffs.ShowDispelableDebuff = true
-    self.RaidDebuffs.FilterDispelableDebuff = true
-    self.RaidDebuffs.MatchBySpellName = true
-    self.RaidDebuffs.Debuffs = raid_debuffs
-    --self.RaidDebuffs.DispelPriority = {}
-    --self.RaidDebuffs.DispelFilter = {}
-    --self.RaidDebuffs.DispelColor = {}
-    --self.RaidDebuffs.SetBackdropColor = function(r,g,b) --[[ debuff type color ]] end
---]===]
+    === License ===
+--]]
 
 local _, ns = ...
 local oUF = ns.oUF or oUF
