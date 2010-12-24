@@ -1,8 +1,4 @@
 --[[
-    === About ===
-    Raid debuff mod for oUF
-
-    === License ===
     Copyright (c) 2010 yaroot(@gmail.com)
 
     Permission is hereby granted, free of charge, to any person
@@ -207,13 +203,21 @@ local function spellCheck()
     end
 end
 
+local Path = function(self, ...)
+    return (self.RaidDebuffs.Override or Update) (self, ...)
+end
 
-local function Enable(self)
-    if self.RaidDebuffs then
-        self:RegisterEvent('UNIT_AURA', Update)
-        self.RaidDebuffs.ForceUpdate = Update
+local ForceUpdate = function(element)
+    return Path(element.__owner, 'ForceUpdate', element.__owner.unit)
+end
 
-        if(not f and not self.RaidDebuffs.DispelFilter) then
+local Enable = function(self)
+    local rd = self.RaidDebuffs
+    if(rd) then
+        self:RegisterEvent('UNIT_AURA', Path)
+        rd.ForceUpdate = ForceUpdate
+
+        if(not f and not rd.DispelFilter and not rd.Override) then
             f = CreateFrame'Frame'
             f:SetScript('OnEvent', spellCheck)
             f:RegisterEvent('PLAYER_TALENT_UPDATE')
@@ -225,11 +229,10 @@ local function Enable(self)
     end
 end
 
-local function Disable(self)
+local Disable = function(self)
     if self.RaidDebuffs then
-        self:UnregisterEvent('UNIT_AURA', Update)
+        self:UnregisterEvent('UNIT_AURA', Path)
         self.RaidDebuffs:Hide()
-        self.RaidDebuffs.ForceUpdate = nil
     end
 end
 
