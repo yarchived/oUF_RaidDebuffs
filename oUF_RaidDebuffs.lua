@@ -89,8 +89,14 @@ local function OnUpdate(self, elps)
     end
 end
 
-local function UpdateDebuff(self, name, icon, count, debuffType, duration, endTime)
+
+local UpdateDebuff = function(self, priority, name, icon, count, debuffType, duration, endTime)
     local rd = self.RaidDebuffs
+
+    if(rd.PreUpdate) then
+        rd:PreUpdate(priority, name, icon, count, debuffType, duration, endTime)
+    end
+
     if name then
         rd.icon:SetTexture(icon)
         rd.icon:Show()
@@ -127,34 +133,44 @@ local function UpdateDebuff(self, name, icon, count, debuffType, duration, endTi
 
         if(rd.SetBackdropColor) then
             local dispelColor = rd.DispelColor or DispelColor
-            local c = dispelColor[debuffType] or dispelColor.none
-            rd:SetBackdropColor(unpack(c or DispelColor.none))
+            local c = dispelColor[debuffType] or dispelColor.none or DispelColor.none
+            rd:SetBackdropColor(unpack(c))
         end
 
         rd:Show()
     else
         rd:Hide()
     end
+
+    if(rd.PostUpdate) then
+        rd:PostUpdate(priority, name, icon, count, debuffType, duration, endTime)
+    end
 end
 
-local function Update(self, event, unit)
+local Update = function(self, event, unit)
     if unit ~= self.unit then return end
     local rd = self.RaidDebuffs
     local _name, _icon, _count, _dtype, _duration, _endTime
     local _priority = 0
+
     local i = 0
     while(true) do
         i = i + 1
-        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId = UnitAura(unit, i, rd.Filter or 'HARMFUL')
+        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(unit, i, rd.Filter or 'HARMFUL')
         if (not name) then break end
         local priority
+
+        if rd.ShowBossDebuff and isBossDebuff then
+            priority = rd.BossDebuffPriority or 999999999
+            _priority, _name, _icon, _count, _dtype, _duration, _endTime = priority, name, icon, count, debuffType, duration, expirationTime
+        end
 
         if rd.ShowDispelableDebuff and debuffType then
             local dispelPriority = rd.DispelPriority or DispelPriority
             if rd.FilterDispelableDebuff then
-                priority = (rd.DispelFilter or DispelFilter)[debuffType] and DispelPriority[debuffType]
+                priority = (rd.DispelFilter or DispelFilter)[debuffType] and dispelPriority[debuffType]
             else
-                priority = DispelPriority[debuffType]
+                priority = dispelPriority[debuffType]
             end
 
             if priority and (priority > _priority) then
@@ -168,12 +184,12 @@ local function Update(self, event, unit)
         end
     end
 
-    UpdateDebuff(self, _name, _icon, _count, _dtype, _duration, _endTime)
+    UpdateDebuff(self, _priority, _name, _icon, _count, _dtype, _duration, _endTime)
 end
 
 local f
 
-local function searchFor(spell, i)
+local searchFor = function(spell, i)
     local spellName = GetSpellInfo(spell)
     local found
     for j = 1, GetNumSpellTabs() do
@@ -186,7 +202,7 @@ local function searchFor(spell, i)
     end
 end
 
-local function spellCheck()
+local spellCheck = function()
     local _, class = UnitClass'player'
     if(class == 'PALADIN') then
         -- http://www.wowhead.com/spell=53551
