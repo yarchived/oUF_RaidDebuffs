@@ -66,7 +66,7 @@ local DispelFilter = ({
     },
 })[select(2, UnitClass'player')]
 
-local function formatTime(s)
+local formatTime = function(s)
     if s > 60 then
         return format('%dm', s/60), s%60
     else
