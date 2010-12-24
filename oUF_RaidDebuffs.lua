@@ -74,10 +74,7 @@ local function formatTime(s)
     end
 end
 
-local function OnUpdate(self, elps)
-    self.nextUpdate = self.nextUpdate - elps
-    if self.nextUpdate > 0 then return end
-
+local UpdateTimer = function(self)
     local timeLeft = self.endTime - GetTime()
     if timeLeft > 0 then
         local text, nextUpdate = formatTime(timeLeft)
@@ -89,6 +86,12 @@ local function OnUpdate(self, elps)
     end
 end
 
+local OnUpdate = function(self, elps)
+    self.nextUpdate = self.nextUpdate - elps
+    if(self.nextUpdate <= 0)then
+        UpdateTimer(self)
+    end
+end
 
 local UpdateDebuff = function(self, priority, name, icon, count, debuffType, duration, endTime)
     local rd = self.RaidDebuffs
