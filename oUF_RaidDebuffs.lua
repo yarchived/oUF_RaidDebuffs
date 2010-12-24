@@ -76,7 +76,7 @@ end
 
 local UpdateTimer = function(self)
     local timeLeft = self.endTime - GetTime()
-    if timeLeft > 0 then
+    if(timeLeft > 0) then
         local text, nextUpdate = formatTime(timeLeft)
         self.time:SetText(text)
         self.nextUpdate = nextUpdate
@@ -93,18 +93,20 @@ local OnUpdate = function(self, elps)
     end
 end
 
-local UpdateDebuff = function(self, priority, name, icon, count, debuffType, duration, endTime)
+local UpdateDebuff = function(self)
     local rd = self.RaidDebuffs
 
     if(rd.PreUpdate) then
-        rd:PreUpdate(priority, name, icon, count, debuffType, duration, endTime)
+        rd:PreUpdate()
     end
 
-    if name then
+    if(rd.index and rd.type) then
+        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(self.unit, rd.index, rd.Filter or 'HARMFUL')
+
         rd.icon:SetTexture(icon)
         rd.icon:Show()
 
-        if rd.count then
+        if(rd.count) then
             if count and (count > 0) then
                 rd.count:SetText(count)
                 rd.count:Show()
@@ -113,8 +115,8 @@ local UpdateDebuff = function(self, priority, name, icon, count, debuffType, dur
             end
         end
 
-        if rd.time then
-            if duration and (duration > 0) then
+        if(rd.time) then
+            if(duration and (duration > 0)) then
                 rd.endTime = endTime
                 rd.nextUpdate = 0
                 rd:SetScript('OnUpdate', OnUpdate)
@@ -125,8 +127,8 @@ local UpdateDebuff = function(self, priority, name, icon, count, debuffType, dur
             end
         end
 
-        if rd.cd then
-            if duration and (duration > 0) then
+        if(rd.cd) then
+            if(duration and (duration > 0)) then
                 rd.cd:SetCooldown(endTime - duration, duration)
                 rd.cd:Show()
             else
@@ -146,48 +148,60 @@ local UpdateDebuff = function(self, priority, name, icon, count, debuffType, dur
     end
 
     if(rd.PostUpdate) then
-        rd:PostUpdate(priority, name, icon, count, debuffType, duration, endTime)
+        rd:PostUpdate()
     end
 end
 
 local Update = function(self, event, unit)
-    if unit ~= self.unit then return end
+    if(unit ~= self.unit) then return end
     local rd = self.RaidDebuffs
-    local _name, _icon, _count, _dtype, _duration, _endTime
-    local _priority = 0
+    rd.priority = -1
 
     local i = 0
     while(true) do
         i = i + 1
         local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(unit, i, rd.Filter or 'HARMFUL')
         if (not name) then break end
-        local priority
 
-        if rd.ShowBossDebuff and isBossDebuff then
-            priority = rd.BossDebuffPriority or 999999999
-            _priority, _name, _icon, _count, _dtype, _duration, _endTime = priority, name, icon, count, debuffType, duration, expirationTime
+        if(rd.ShowBossDebuff and isBossDebuff) then
+            local priority = rd.BossDebuffPriority or 999999999
+            if(priority and priority > rd.priority) then
+                rd.priority = priority
+                rd.index = i
+                rd.type = 'Boss'
+            end
         end
 
-        if rd.ShowDispelableDebuff and debuffType then
+        if(rd.ShowDispelableDebuff and debuffType) then
             local dispelPriority = rd.DispelPriority or DispelPriority
-            if rd.FilterDispelableDebuff then
+            local priority
+            if(rd.FilterDispelableDebuff) then
                 priority = (rd.DispelFilter or DispelFilter)[debuffType] and dispelPriority[debuffType]
             else
                 priority = dispelPriority[debuffType]
             end
 
-            if priority and (priority > _priority) then
-                _priority, _name, _icon, _count, _dtype, _duration, _endTime = priority, name, icon, count, debuffType, duration, expirationTime
+            if(priority and (priority > rd.priority)) then
+                rd.priority = priority
+                rd.index = i
+                rd.type = 'Dispel'
             end
         end
 
-        priority = rd.Debuffs and rd.Debuffs[rd.MatchBySpellName and name or spellId]
-        if priority and (priority > _priority) then
-            _priority, _name, _icon, _count, _dtype, _duration, _endTime = priority, name, icon, count, debuffType, duration, expirationTime
+        local priority = rd.Debuffs and rd.Debuffs[rd.MatchBySpellName and name or spellId]
+        if(priority and (priority > rd.priority)) then
+            rd.priority = priority
+            rd.index = i
+            rd.type = 'Custom'
         end
     end
 
-    UpdateDebuff(self, _priority, _name, _icon, _count, _dtype, _duration, _endTime)
+    if(rd.priority == -1) then
+        rd.index = nil
+        rd.type = nil
+    end
+
+    UpdateDebuff(self)
 end
 
 local f
@@ -249,7 +263,7 @@ local Enable = function(self)
 end
 
 local Disable = function(self)
-    if self.RaidDebuffs then
+    if(self.RaidDebuffs) then
         self:UnregisterEvent('UNIT_AURA', Path)
         self.RaidDebuffs:Hide()
     end
