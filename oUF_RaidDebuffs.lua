@@ -27,6 +27,12 @@ local _, ns = ...
 local oUF = ns.oUF or oUF
 assert(oUF, 'oUF RaidDebuffs: unable to locate oUF')
 
+local PRIORITY_BOSSDEBUFF = 9999999
+local PRIORITY_INVALID = 0
+local DEFAULT_FILTERS = {
+    ['HARMFUL'] = true,
+}
+
 local DispelColor = {
     ['Magic']   = {.2, .6, 1},
     ['Curse']   = {.6, 0, 1},
@@ -93,15 +99,15 @@ local OnUpdate = function(self, elps)
     end
 end
 
-local UpdateDebuff = function(self)
+local UpdateDebuffFrame = function(self)
     local rd = self.RaidDebuffs
 
     if(rd.PreUpdate) then
         rd:PreUpdate()
     end
 
-    if(rd.index and rd.type) then
-        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(self.unit, rd.index, rd.Filter or 'HARMFUL')
+    if(rd.index and rd.type and rd.filter) then
+        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(self.unit, rd.index, rd.filter)
 
         rd.icon:SetTexture(icon)
         rd.icon:Show()
@@ -142,9 +148,13 @@ local UpdateDebuff = function(self)
             rd:SetBackdropColor(unpack(c))
         end
 
-        rd:Show()
+        if(not rd:IsShown()) then
+            rd:Show()
+        end
     else
-        rd:Hide()
+        if(rd:IsShown()) then
+            rd:Hide()
+        end
     end
 
     if(rd.PostUpdate) then
@@ -152,56 +162,63 @@ local UpdateDebuff = function(self)
     end
 end
 
+
 local Update = function(self, event, unit)
     if(unit ~= self.unit) then return end
     local rd = self.RaidDebuffs
-    rd.priority = -1
+    rd.priority = PRIORITY_INVALID
 
-    local i = 0
-    while(true) do
-        i = i + 1
-        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(unit, i, rd.Filter or 'HARMFUL')
-        if (not name) then break end
+    for filter in next, (rd.Filters or DEFAULT_FILTERS) do
+        local i = 0
+        while(true) do
+            i = i + 1
+            local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(unit, i, filter)
+            if (not name) then break end
 
-        if(rd.ShowBossDebuff and isBossDebuff) then
-            local priority = rd.BossDebuffPriority or 999999999
-            if(priority and priority > rd.priority) then
-                rd.priority = priority
-                rd.index = i
-                rd.type = 'Boss'
-            end
-        end
-
-        if(rd.ShowDispelableDebuff and debuffType) then
-            local dispelPriority = rd.DispelPriority or DispelPriority
-            local priority
-            if(rd.FilterDispelableDebuff) then
-                priority = (rd.DispelFilter or DispelFilter)[debuffType] and dispelPriority[debuffType]
-            else
-                priority = dispelPriority[debuffType]
+            if(rd.ShowBossDebuff and isBossDebuff) then
+                local priority = rd.BossDebuffPriority or PRIORITY_BOSSDEBUFF
+                if(priority and priority > rd.priority) then
+                    rd.priority = priority
+                    rd.index = i
+                    rd.type = 'Boss'
+                    rd.filter = filter
+                end
             end
 
+            if(rd.ShowDispelableDebuff and debuffType) then
+                local dispelPriority = rd.DispelPriority or DispelPriority
+                local priority
+                if(rd.FilterDispelableDebuff) then
+                    priority = (rd.DispelFilter or DispelFilter)[debuffType] and dispelPriority[debuffType]
+                else
+                    priority = dispelPriority[debuffType]
+                end
+
+                if(priority and (priority > rd.priority)) then
+                    rd.priority = priority
+                    rd.index = i
+                    rd.type = 'Dispel'
+                    rd.filter = filter
+                end
+            end
+
+            local priority = rd.Debuffs and rd.Debuffs[rd.MatchBySpellName and name or spellId]
             if(priority and (priority > rd.priority)) then
                 rd.priority = priority
                 rd.index = i
-                rd.type = 'Dispel'
+                rd.type = 'Custom'
+                rd.filter = filter
             end
-        end
-
-        local priority = rd.Debuffs and rd.Debuffs[rd.MatchBySpellName and name or spellId]
-        if(priority and (priority > rd.priority)) then
-            rd.priority = priority
-            rd.index = i
-            rd.type = 'Custom'
         end
     end
 
-    if(rd.priority == -1) then
+    if(rd.priority == PRIORITY_INVALID) then
         rd.index = nil
+        rd.filter = nil
         rd.type = nil
     end
 
-    UpdateDebuff(self)
+    UpdateDebuffFrame(self)
 end
 
 local f
