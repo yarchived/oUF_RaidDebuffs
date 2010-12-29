@@ -99,15 +99,13 @@ local OnUpdate = function(self, elps)
     end
 end
 
-local UpdateDebuffFrame = function(self)
-    local rd = self.RaidDebuffs
-
+local UpdateDebuffFrame = function(rd)
     if(rd.PreUpdate) then
         rd:PreUpdate()
     end
 
     if(rd.index and rd.type and rd.filter) then
-        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(self.unit, rd.index, rd.filter)
+        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(rd.__owner.unit, rd.index, rd.filter)
 
         rd.icon:SetTexture(icon)
         rd.icon:Show()
@@ -123,7 +121,7 @@ local UpdateDebuffFrame = function(self)
 
         if(rd.time) then
             if(duration and (duration > 0)) then
-                rd.endTime = endTime
+                rd.endTime = expirationTime
                 rd.nextUpdate = 0
                 rd:SetScript('OnUpdate', OnUpdate)
                 rd.time:Show()
@@ -135,7 +133,7 @@ local UpdateDebuffFrame = function(self)
 
         if(rd.cd) then
             if(duration and (duration > 0)) then
-                rd.cd:SetCooldown(endTime - duration, duration)
+                rd.cd:SetCooldown(expirationTime - duration, duration)
                 rd.cd:Show()
             else
                 rd.cd:Hide()
@@ -161,7 +159,6 @@ local UpdateDebuffFrame = function(self)
         rd:PostUpdate()
     end
 end
-
 
 local Update = function(self, event, unit)
     if(unit ~= self.unit) then return end
@@ -218,7 +215,7 @@ local Update = function(self, event, unit)
         rd.type = nil
     end
 
-    UpdateDebuffFrame(self)
+    return (rd.OverrideUpdateFrame or UpdateDebuffFrame) ( rd )
 end
 
 local f
@@ -266,6 +263,7 @@ local Enable = function(self)
     if(rd) then
         self:RegisterEvent('UNIT_AURA', Path)
         rd.ForceUpdate = ForceUpdate
+        rd.__owner = self
 
         if(not f and not rd.DispelFilter and not rd.Override) then
             f = CreateFrame'Frame'
@@ -283,6 +281,7 @@ local Disable = function(self)
     if(self.RaidDebuffs) then
         self:UnregisterEvent('UNIT_AURA', Path)
         self.RaidDebuffs:Hide()
+        self.RaidDebuffs.__owner = nil
     end
 end
 
