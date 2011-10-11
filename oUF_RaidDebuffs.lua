@@ -149,7 +149,7 @@ local formatTime = function(s)
     if s > 60 then
         return format('%dm', s/60), s%60
     else
-        return format('%d', s), s - floor(s)
+        return math.modf(s)
     end
 end
 
