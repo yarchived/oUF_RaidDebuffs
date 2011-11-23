@@ -65,7 +65,7 @@ local UpdateDebuffFrame = function(rd)
     end
 
     if(rd.index and rd.type and rd.filter) then
-        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(rd.__owner.unit, rd.index, rd.filter)
+        local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff, value1, value2, value3 = UnitAura(rd.__owner.unit, rd.index, rd.filter)
 
         rd.icon:SetTexture(icon)
         rd.icon:Show()
@@ -132,11 +132,11 @@ local Update = function(self, event, unit)
 
             if(rd.ShowDispelableDebuff and debuffType) then
                 local disPrio = rd.DispelPriority or dispelPrio
-                local filter = rd.DispelFilter or dispelFilter
+                local disFilter = rd.DispelFilter or dispelFilter
                 local prio
 
-                if(rd.FilterDispelableDebuff and filter) then
-                    prio = filter[debuffType] and disPrio[debuffType]
+                if(rd.FilterDispelableDebuff and disFilter) then
+                    prio = disFilter[debuffType] and disPrio[debuffType]
                 else
                     prio = disPrio[debuffType]
                 end
@@ -199,7 +199,7 @@ local spellCheck = function()
     local _, class = UnitClass'player'
     if(talentTbl) then
         for k, v in next, talentTbl do
-            DispelFilter[v] = searchFor(k)
+            dispelFilter[v] = searchFor(k)
         end
     end
 end
