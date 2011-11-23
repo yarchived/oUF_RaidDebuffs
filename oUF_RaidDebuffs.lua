@@ -39,7 +39,9 @@ local debuffTypeColor = {
     ['none'] = {0, 0, 0},
 }
 for k, v in next, DebuffTypeColor do
-    debuffTypeColor[k] = { v.r, v.g, v.b }
+    if(k ~= '' and k ~= 'none') then
+        debuffTypeColor[k] = { v.r, v.g, v.b }
+    end
 end
 
 local dispelPrio = {
