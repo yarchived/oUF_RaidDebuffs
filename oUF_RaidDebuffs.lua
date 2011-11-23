@@ -1,176 +1,61 @@
 --[[
-    Copyright (c) 2010 yaroot(@gmail.com)
+    Copyright (c) 2010-2011 yaroot(@gmail.com)
 
-    Permission is hereby granted, free of charge, to any person
-    obtaining a copy of this software and associated documentation
-    files (the "Software"), to deal in the Software without
-    restriction, including without limitation the rights to use,
-    copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the
-    Software is furnished to do so, subject to the following
-    conditions:
-
-    The above copyright notice and this permission notice shall be
-    included in all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-    OTHER DEALINGS IN THE SOFTWARE.
+    You can do whatever you want with this file, and if you find it
+    useful, you can buy me a beer if we meet someday.
 --]]
 
---[=====[
+--[=[
+    .icon                   [texture] (required)
+    .count                  [fontstring]
+    .cd                     [cooldown]
 
--- debuff data
-local raid_debuffs = {
---  [spell] = priority,
-    [GetSpellInfo(xxx)] = 10,
-    [GetSpellInfo(zzz)] = 11,
---  ...
-}
--- we can generate them
-local raid_debuffs = {}
-for _, id in ipairs{
-    -- spellIDs
-    123,
-    456,
-} do
-    local spell = GetSpellInfo(id)
-    if(spell) then
-        raid_debuffs = k+10
-    end
-end
+    .ShowBossDebuff         [boolean]
+    .BossDebuffPriority     [number]
 
+    .ShowDispelableDebuff   [boolean]
+    .DispelPriority         [table]     { [type] = prio }
+    .DispelFilter           [table]     { [type] = true }
+    .DebuffTypeColor        [table]     { [type] = { r, g, b } }
 
-local styleFunc = function(self, unit)
---  ...
-    -- create the icon frame
-    self.RaidDebuffs = CreateFrame('Frame', nil, self)
-    self.RaidDebuffs:SetHeight(20)
-    self.RaidDebuffs:SetWidth(20)
-    self.RaidDebuffs:SetPoint('CENTER', self)
-    self.RaidDebuffs:SetFrameStrata'HIGH'
+    .Debuffs                [table]     { [name(string)|id(number)] = prio(number) }
+    .MatchBySpellName       [boolean]
 
-    -- debuff type color
-    self.RaidDebuffs:SetBackdrop({
-        bgFile = [=[Interface\ChatFrame\ChatFrameBackground]=],
-        insets = {top = -1, left = -1, bottom = -1, right = -1},
-    })
+    .SetBackdropColor       [function]  function(r, g, b) end
+--]=]
 
-    -- icon
-    self.RaidDebuffs.icon = self.RaidDebuffs:CreateTexture(nil, 'OVERLAY')
-    self.RaidDebuffs.icon:SetAllPoints(self.RaidDebuffs)
-
-    -- cd
-    self.RaidDebuffs.cd = CreateFrame('Cooldown', nil, self.RaidDebuffs)
-    self.RaidDebuffs.cd:SetAllPoints(self.RaidDebuffs)
-
-    -- cd timer, if you don't use omnicc
-    --self.RaidDebuffs.time = self.RaidDebuffs:CreateFontString(nil, 'OVERLAY')
-    --self.RaidDebuffs.time:SetFont(STANDARD_TEXT_FONT, 12, 'OUTLINE')
-    --self.RaidDebuffs.time:SetPoint('CENTER', self.RaidDebuffs, 'CENTER', 0, 0)
-    --self.RaidDebuffs.time:SetTextColor(1, .9, 0)
-
-    -- count
-    self.RaidDebuffs.count = self.RaidDebuffs:CreateFontString(nil, 'OVERLAY')
-    self.RaidDebuffs.count:SetFont(STANDARD_TEXT_FONT, 8, 'OUTLINE')
-    self.RaidDebuffs.count:SetPoint('BOTTOMRIGHT', self.RaidDebuffs, 'BOTTOMRIGHT', 2, 0)
-    self.RaidDebuffs.count:SetTextColor(1, .9, 0)
-
-    -- set the debuffs table
-    self.RaidDebuffs.Debuffs = raid_debuffs
-
-    -- some options you might want
-    self.RaidDebuffs.ShowDispelableDebuff = true
-    self.RaidDebuffs.FilterDispelableDebuff = true
-    self.RaidDebuffs.MatchBySpellName = true
-    --self.RaidDebuffs.DispelPriority = {}
-    --self.RaidDebuffs.DispelFilter = {}
-    --self.RaidDebuffs.DispelColor = {}
-    --self.RaidDebuffs.SetBackdropColor = function(r,g,b) --[[ debuff type color ]] end
-end
-
-]=====]
 
 local _, ns = ...
 local oUF = ns.oUF or oUF
 assert(oUF, 'oUF RaidDebuffs: unable to locate oUF')
 
-local PRIORITY_BOSSDEBUFF = 9999999
-local PRIORITY_INVALID = 0
-local DEFAULT_FILTERS = {
+local bossDebuffPrio = 9999999
+local invalidPrio = -1
+local auraFilters = {
     ['HARMFUL'] = true,
 }
 
-local DispelColor = {
-    ['Magic']   = {.2, .6, 1},
-    ['Curse']   = {.6, 0, 1},
-    ['Disease'] = {.6, .4, 0},
-    ['Poison']  = {0, .6, 0},
+local debuffTypeColor = {
     ['none'] = {0, 0, 0},
 }
+for k, v in next, DebuffTypeColor do
+    debuffTypeColor[k] = { v.r, v.g, v.b }
+end
 
-local DispelPriority = {
+local dispelPrio = {
     ['Magic']   = 4,
     ['Curse']   = 3,
     ['Disease'] = 2,
     ['Poison']  = 1,
 }
 
-local DispelFilter = ({
-    PIREST = {
-        Magic = true,
-        Disease = true,
-    },
-    SHAMAN = {
-        --Magic = true,
-        Curse = true,
-    },
-    PALADIN = {
-        --Magic = false,
-        Poison = true,
-        Disease = true,
-    },
-    MAGE = {
-        Curse = true,
-    },
-    DRUID = {
-        --Magic = true,
-        Curse = true,
-        Poison = true,
-    },
+local dispelFilter = ({
+    PIREST = { Magic = true, Disease = true, },
+    SHAMAN = { Magic = true, Curse = true, },
+    PALADIN = { Magic = false, Poison = true, Disease = true, },
+    MAGE = { Curse = true, },
+    DRUID = { Magic = true, Curse = true, Poison = true, },
 })[select(2, UnitClass'player')]
-
-local formatTime = function(s)
-    if s > 60 then
-        return format('%dm', s/60), s%60
-    else
-        return math.modf(s)
-    end
-end
-
-local UpdateTimer = function(self)
-    local timeLeft = self.endTime - GetTime()
-    if(timeLeft > 0) then
-        local text, nextUpdate = formatTime(timeLeft)
-        self.time:SetText(text)
-        self.nextUpdate = nextUpdate
-    else
-        self:SetScript('OnUpdate', nil)
-        self.time:Hide()
-    end
-end
-
-local OnUpdate = function(self, elps)
-    self.nextUpdate = self.nextUpdate - elps
-    if(self.nextUpdate <= 0)then
-        UpdateTimer(self)
-    end
-end
 
 local UpdateDebuffFrame = function(rd)
     if(rd.PreUpdate) then
@@ -192,18 +77,6 @@ local UpdateDebuffFrame = function(rd)
             end
         end
 
-        if(rd.time) then
-            if(duration and (duration > 0)) then
-                rd.endTime = expirationTime
-                rd.nextUpdate = 0
-                rd:SetScript('OnUpdate', OnUpdate)
-                rd.time:Show()
-            else
-                rd:SetScript('OnUpdate', nil)
-                rd.time:Hide()
-            end
-        end
-
         if(rd.cd) then
             if(duration and (duration > 0)) then
                 rd.cd:SetCooldown(expirationTime - duration, duration)
@@ -214,8 +87,8 @@ local UpdateDebuffFrame = function(rd)
         end
 
         if(rd.SetBackdropColor) then
-            local dispelColor = rd.DispelColor or DispelColor
-            local c = dispelColor[debuffType] or dispelColor.none or DispelColor.none
+            local colors = rd.DebuffTypeColor or debuffTypeColor
+            local c = colors[debuffType] or colors.none or colors.none
             rd:SetBackdropColor(unpack(c))
         end
 
@@ -236,19 +109,19 @@ end
 local Update = function(self, event, unit)
     if(unit ~= self.unit) then return end
     local rd = self.RaidDebuffs
-    rd.priority = PRIORITY_INVALID
+    rd.priority = invalidPrio
 
-    for filter in next, (rd.Filters or DEFAULT_FILTERS) do
+    for filter in next, (rd.Filters or auraFilters) do
         local i = 0
         while(true) do
             i = i + 1
-            local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff = UnitAura(unit, i, filter)
+            local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff, value1, value2, value3 = UnitAura(unit, i, filter)
             if (not name) then break end
 
             if(rd.ShowBossDebuff and isBossDebuff) then
-                local priority = rd.BossDebuffPriority or PRIORITY_BOSSDEBUFF
-                if(priority and priority > rd.priority) then
-                    rd.priority = priority
+                local prio = rd.BossDebuffPriority or bossDebuffPrio
+                if(prio and prio > rd.priority) then
+                    rd.priority = prio
                     rd.index = i
                     rd.type = 'Boss'
                     rd.filter = filter
@@ -256,25 +129,27 @@ local Update = function(self, event, unit)
             end
 
             if(rd.ShowDispelableDebuff and debuffType) then
-                local dispelPriority = rd.DispelPriority or DispelPriority
-                local priority
-                if(rd.FilterDispelableDebuff) then
-                    priority = (rd.DispelFilter or DispelFilter)[debuffType] and dispelPriority[debuffType]
+                local disPrio = rd.DispelPriority or dispelPrio
+                local filter = rd.DispelFilter or dispelFilter
+                local prio
+
+                if(rd.FilterDispelableDebuff and filter) then
+                    prio = filter[debuffType] and disPrio[debuffType]
                 else
-                    priority = dispelPriority[debuffType]
+                    prio = disPrio[debuffType]
                 end
 
-                if(priority and (priority > rd.priority)) then
-                    rd.priority = priority
+                if(prio and (prio > rd.priority)) then
+                    rd.priority = prio
                     rd.index = i
                     rd.type = 'Dispel'
                     rd.filter = filter
                 end
             end
 
-            local priority = rd.Debuffs and rd.Debuffs[rd.MatchBySpellName and name or spellId]
-            if(priority and (priority > rd.priority)) then
-                rd.priority = priority
+            local prio = rd.Debuffs and rd.Debuffs[rd.MatchBySpellName and name or spellId]
+            if(prio and (prio > rd.priority)) then
+                rd.priority = prio
                 rd.index = i
                 rd.type = 'Custom'
                 rd.filter = filter
@@ -282,7 +157,7 @@ local Update = function(self, event, unit)
         end
     end
 
-    if(rd.priority == PRIORITY_INVALID) then
+    if(rd.priority == invalidPrio) then
         rd.index = nil
         rd.filter = nil
         rd.type = nil
@@ -300,26 +175,30 @@ local searchFor = function(spell, i)
         for k = 1, GetNumTalents(j) do
             local talentName, _, _, _, rank = GetTalentInfo(j, k)
             if(talentName and talentName == spellName) then
-                return true
+                return rank and rank > 0
             end
         end
     end
 end
 
+local talentTbl = ({
+    PALADIN = {
+        [53551] = 'Magic',
+    },
+    SHAMAN = {
+        [77130] = 'Magic',
+    },
+    DRUID = {
+        [88423] = 'Magic',
+    },
+})[select(2, UnitClass'player')]
+
 local spellCheck = function()
     local _, class = UnitClass'player'
-    if(class == 'PALADIN') then
-        -- http://www.wowhead.com/spell=53551
-        -- Sacred Cleansing
-        DispelFilter.Magic = searchFor(53551)
-    elseif(class == 'SHAMAN') then
-        -- http://www.wowhead.com/spell=77130
-        -- Improved Cleanse Spirit
-        DispelFilter.Magic = searchFor(77130)
-    elseif(class == 'DRUID') then
-        -- http://www.wowhead.com/spell=88423
-        -- Nature's Cure
-        DispelFilter.Magic = searchFor(88423)
+    if(talentTbl) then
+        for k, v in next, talentTbl do
+            DispelFilter[v] = searchFor(k)
+        end
     end
 end
 
@@ -338,7 +217,7 @@ local Enable = function(self)
         rd.ForceUpdate = ForceUpdate
         rd.__owner = self
 
-        if(not f and not rd.DispelFilter and not rd.Override) then
+        if(talentTbl and (not f) and (not rd.DispelFilter) and (not rd.Override)) then
             f = CreateFrame'Frame'
             f:SetScript('OnEvent', spellCheck)
             f:RegisterEvent('PLAYER_TALENT_UPDATE')
