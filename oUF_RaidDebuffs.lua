@@ -6,7 +6,7 @@
 --]]
 
 --[=[
-    .icon                   [texture] (required)
+    .icon                   [texture]
     .count                  [fontstring]
     .cd                     [cooldown]
 
@@ -67,8 +67,10 @@ local UpdateDebuffFrame = function(rd)
     if(rd.index and rd.type and rd.filter) then
         local name, rank, icon, count, debuffType, duration, expirationTime, unitCaster, isStealable, shouldConsolidate, spellId, canApplyAura, isBossDebuff, value1, value2, value3 = UnitAura(rd.__owner.unit, rd.index, rd.filter)
 
-        rd.icon:SetTexture(icon)
-        rd.icon:Show()
+        if(rd.icon) then
+            rd.icon:SetTexture(icon)
+            rd.icon:Show()
+        end
 
         if(rd.count) then
             if count and (count > 0) then
