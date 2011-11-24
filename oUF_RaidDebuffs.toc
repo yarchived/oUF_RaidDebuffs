@@ -1,7 +1,7 @@
 ## Interface: 40200
 ## Title: oUF RaidDebuffs
 ## Notes: Raid debuff mod for oUF
-## Version: 40200.1
+## Version: 40200.2
 ## OptionalDeps: oUF
 
 oUF_RaidDebuffs.lua
