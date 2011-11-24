@@ -90,10 +90,10 @@ local UpdateDebuffFrame = function(rd)
             end
         end
 
-        if(rd.SetBackdropColor) then
+        if(rd.SetDebuffTypeColor) then
             local colors = rd.DebuffTypeColor or debuffTypeColor
-            local c = colors[debuffType] or colors.none or colors.none
-            rd:SetBackdropColor(unpack(c))
+            local c = colors[debuffType] or colors.none or debuffTypeColor.none
+            rd:SetDebuffTypeColor(unpack(c))
         end
 
         if(not rd:IsShown()) then
