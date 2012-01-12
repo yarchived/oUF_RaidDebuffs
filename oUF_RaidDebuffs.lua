@@ -21,7 +21,7 @@
     .Debuffs                [table]     { [name(string)|id(number)] = prio(number) }
     .MatchBySpellName       [boolean]
 
-    .SetBackdropColor       [function]  function(r, g, b) end
+    .SetDebuffTypeColor     [function]  function(r, g, b) end
 --]=]
 
 
