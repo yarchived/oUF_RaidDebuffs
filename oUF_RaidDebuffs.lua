@@ -1,9 +1,3 @@
---[[
-    Copyright (c) 2010-2011 yaroot(@gmail.com)
-
-    You can do whatever you want with this file, and if you find it
-    useful, you can buy me a beer if we meet someday.
---]]
 
 --[=[
     .icon                   [texture]
@@ -29,6 +23,8 @@ local _, ns = ...
 local oUF = ns.oUF or oUF
 assert(oUF, 'oUF RaidDebuffs: unable to locate oUF')
 
+local PLAYER_CLASS = select(2, UnitClass'player')
+
 local bossDebuffPrio = 9999999
 local invalidPrio = -1
 local auraFilters = {
@@ -52,12 +48,13 @@ local dispelPrio = {
 }
 
 local dispelFilter = ({
-    PIREST = { Magic = true, Disease = true, },
-    SHAMAN = { Magic = true, Curse = true, },
+    PRIEST = { Magic = true, Disease = true, },
+    SHAMAN = { Magic = false, Curse = true, },
     PALADIN = { Magic = false, Poison = true, Disease = true, },
     MAGE = { Curse = true, },
-    DRUID = { Magic = true, Curse = true, Poison = true, },
-})[select(2, UnitClass'player')]
+    DRUID = { Magic = false, Curse = true, Poison = true, },
+    MONK = { Magic = false, Poison = true, Disease = true, },
+})[PLAYER_CLASS]
 
 local UpdateDebuffFrame = function(rd)
     if(rd.PreUpdate) then
@@ -170,38 +167,28 @@ local Update = function(self, event, unit)
     return (rd.OverrideUpdateFrame or UpdateDebuffFrame) ( rd )
 end
 
-local f
-
-local searchFor = function(spell, i)
-    local spellName = GetSpellInfo(spell)
-    local found
-    for j = 1, GetNumSpellTabs() do
-        for k = 1, GetNumTalents(j) do
-            local talentName, _, _, _, rank = GetTalentInfo(j, k)
-            if(talentName and talentName == spellName) then
-                return rank and rank > 0
-            end
-        end
-    end
-end
-
 local talentTbl = ({
     PALADIN = {
-        [53551] = 'Magic',
+        PALADIN_HOLY = 'Magic',
     },
     SHAMAN = {
-        [77130] = 'Magic',
+        SHAMAN_RESTO = 'Magic',
     },
     DRUID = {
-        [88423] = 'Magic',
+        DRUID_RESTO = 'Magic',
     },
-})[select(2, UnitClass'player')]
+    MONK = {
+        MONK_WIND = 'Magic',
+    }
+})[PLAYER_CLASS]
 
 local spellCheck = function()
-    local _, class = UnitClass'player'
-    if(talentTbl) then
-        for k, v in next, talentTbl do
-            dispelFilter[v] = searchFor(k)
+    local spec = GetSpecialization()
+    local id = spec and GetSpecializationInfo(spec)
+    local specText = id and SPEC_CORE_ABILITY_TEXT[id]
+    if(specText and talentTbl) then
+        for key, disp in next, talentTbl do
+            dispelFilter[disp] = key == specText
         end
     end
 end
@@ -214,6 +201,7 @@ local ForceUpdate = function(element)
     return Path(element.__owner, 'ForceUpdate', element.__owner.unit)
 end
 
+local f
 local Enable = function(self)
     local rd = self.RaidDebuffs
     if(rd) then
@@ -224,8 +212,8 @@ local Enable = function(self)
         if(talentTbl and (not f) and (not rd.DispelFilter) and (not rd.Override)) then
             f = CreateFrame'Frame'
             f:SetScript('OnEvent', spellCheck)
-            f:RegisterEvent('PLAYER_TALENT_UPDATE')
-            f:RegisterEvent('CHARACTER_POINTS_CHANGED')
+            f:RegisterEvent'PLAYER_TALENT_UPDATE'
+            f:RegisterEvent'CHARACTER_POINTS_CHANGED'
             spellCheck()
         end
 
